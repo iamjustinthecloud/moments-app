@@ -7,6 +7,9 @@ from aws_cdk import (
     aws_sqs as sqs,
     aws_events as events,
     aws_events_targets as targets,
+    aws_lambda as lambda_,
+    aws_logs as logs,
+    aws_lambda_event_sources as lambda_event_sources,
 
 )
 from constructs import Construct
@@ -25,6 +28,15 @@ class MomentsAppStack(Stack):
 
         # --- Add SQS target to the rule ---
         self.create_hello_rule().add_target(targets.SqsQueue(hello_queue))  # type: ignore
+
+        # --- Log group for the Lambda ---
+        log_group = self.create_log_group()
+
+        # --- Create Lambda subscribed to SQS ---
+        self.create_scheduled_hello_lambda(
+            log_group=log_group,  # type: ignore
+            hello_queue=hello_queue, # type: ignore
+        )
 
     # Resource creation
 
@@ -76,3 +88,37 @@ class MomentsAppStack(Stack):
             schedule=events.Schedule.cron(minute="*"),
         )
 
+    def create_log_group(self) -> logs.LogGroup:
+        """Create a log group for Lambda."""
+        return logs.LogGroup(
+            self,
+            "MyFuncLogGroup",
+            retention=logs.RetentionDays.ONE_WEEK,
+            log_group_name="MomentsFuncLogGroup",
+        )
+
+    def create_scheduled_hello_lambda(
+            self,
+            log_group: logs.ILogGroup,
+            hello_queue: sqs.IQueue,
+    ) -> lambda_.Function:
+        """Create a Lambda function triggered by SQS."""
+        hello_lambda_fn = lambda_.Function(
+            self,
+            "HelloLambda",
+            runtime=lambda_.Runtime.PYTHON_3_12,  # type: ignore
+            handler="hello.handler",
+            code=lambda_.Code.from_asset("lambdas"),
+            timeout=Duration.seconds(10),
+            memory_size=128,
+            environment={"LOG_LEVEL": "INFO"},
+            log_group=log_group,
+            function_name="HelloLambda",
+        )
+
+        # Attach SQS event source
+        hello_lambda_fn.add_event_source(
+            lambda_event_sources.SqsEventSource(hello_queue)
+        )
+
+        return hello_lambda_fn
