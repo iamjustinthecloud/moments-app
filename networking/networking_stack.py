@@ -1,8 +1,12 @@
 from aws_cdk import (
     Stack,
     aws_ec2 as ec2,
+    aws_autoscaling as autoscaling,
+    aws_elasticloadbalancingv2 as elbv2,
+    CfnOutput
 )
 from constructs import Construct
+from typing import Union
 
 VPC_NAME = "moments-vpc"
 VPC_CIDR = "10.0.0.0/16"
@@ -20,12 +24,38 @@ class NetworkingStack(Stack):
         vpc = vpc or self.create_vpc()
         nat_instance = self.create_nat_instance(vpc)
         self.add_route_to_nat(vpc, nat_instance)
+        web_instance_auto_scaling = self.create_web_instance(vpc)
+        alb = self.create_application_load_balancer(vpc, web_instance_auto_scaling)
+
+        CfnOutput(self, "ALB DNS name: ", value=alb.load_balancer_dns_name)
+        CfnOutput(self, "URL: ", value="http://" + alb.load_balancer_dns_name)
 
     @staticmethod
     def get_user_data(filename):
         with open("./user_data/" + filename) as file:
             user_data = file.read()
         return user_data
+
+    def create_application_load_balancer(
+        self, vpc: ec2.IVpc, web_instance_auto_scaling
+    ) -> elbv2.ApplicationLoadBalancer:
+        alb = elbv2.ApplicationLoadBalancer(
+            self,
+            id="ApplicationLoadBalancer",
+            vpc=vpc,
+            internet_facing=True,
+            vpc_subnets=ec2.SubnetSelection(
+                availability_zones=cfg["AVAILABILITY_ZONES"],
+                subnet_type=ec2.SubnetType.PUBLIC,
+            ),
+        )
+        http_listener = alb.add_listener("HTTPListener", port=80)
+        tg = http_listener.add_targets("MomentsAppFleet", port=8080, targets=[web_instance_auto_scaling])
+        tg.configure_health_check(healthy_http_codes="200,301")
+        web_instance_auto_scaling.connections.allow_from(
+            alb, ec2.Port.tcp(8080), "ALB access on target instance"
+        )
+        return alb
 
     def create_nat_instance(self, vpc: ec2.IVpc) -> ec2.Instance:
         user_data = self.get_user_data("nat_instance")
@@ -51,7 +81,7 @@ class NetworkingStack(Stack):
                 self,
                 id=f"PrivateRouteToNat{subnet.node.id}",
                 route_table_id=subnet.route_table.route_table_id,
-                destination_cidr_blrock="0.0.0.0/0",
+                destination_cidr_block="0.0.0.0/0",
                 instance_id=nat_instance.instance_id,
             )
 
@@ -114,3 +144,25 @@ class NetworkingStack(Stack):
             ],
         )
         return vpc
+
+    def create_web_instance(
+        self, vpc: Union[ec2.Vpc, ec2.IVpc]
+    ) -> autoscaling.AutoScalingGroup:
+        amazon_linux = ec2.MachineImage.latest_amazon_linux2()
+        user_data = self.get_user_data("web_server")
+
+        web_instance_auto_scaling = autoscaling.AutoScalingGroup(
+            self,
+            id="MomentsWebServerAutoScalingGroup",
+            vpc=vpc,
+            machine_image=amazon_linux,
+            user_data=ec2.UserData.custom(user_data),
+            vpc_subnets=ec2.SubnetSelection(
+                availability_zones=["us-east-1a","us-east-1b"],
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
+            ),
+            instance_type=ec2.InstanceType.of(
+                ec2.InstanceClass.T3, ec2.InstanceSize.MICRO
+            ),
+        )
+        return web_instance_auto_scaling
