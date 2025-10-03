@@ -10,7 +10,7 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_logs as logs,
     aws_lambda_event_sources as lambda_event_sources,
-
+    aws_ec2 as ec2,
 )
 from constructs import Construct
 
@@ -24,7 +24,7 @@ class MomentsAppStack(Stack):
         self.create_s3_bucket()
         # --- Queues ---
         dlq = self.create_hello_dlq()
-        hello_queue = self.create_hello_queue(dlq)  # type: ignore
+        hello_queue: sqs.IQueue = self.create_hello_queue(dlq)  # type: ignore
 
         # --- Add SQS target to the rule ---
         self.create_hello_rule().add_target(targets.SqsQueue(hello_queue))  # type: ignore
@@ -34,8 +34,7 @@ class MomentsAppStack(Stack):
 
         # --- Create Lambda subscribed to SQS ---
         self.create_scheduled_hello_lambda(
-            log_group=log_group,  # type: ignore
-            hello_queue=hello_queue, # type: ignore
+            log_group=log_group, hello_queue=hello_queue  # type: ignore
         )
 
     # Resource creation
@@ -70,6 +69,7 @@ class MomentsAppStack(Stack):
                 queue=dlq,
             ),
         )
+
     def create_hello_dlq(self) -> sqs.Queue:
         """Create the dead-letter queue."""
         return sqs.Queue(
@@ -95,12 +95,13 @@ class MomentsAppStack(Stack):
             "MyFuncLogGroup",
             retention=logs.RetentionDays.ONE_WEEK,
             log_group_name="MomentsFuncLogGroup",
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
     def create_scheduled_hello_lambda(
-            self,
-            log_group: logs.ILogGroup,
-            hello_queue: sqs.IQueue,
+        self,
+        log_group: logs.ILogGroup,
+        hello_queue: sqs.IQueue,
     ) -> lambda_.Function:
         """Create a Lambda function triggered by SQS."""
         hello_lambda_fn = lambda_.Function(
