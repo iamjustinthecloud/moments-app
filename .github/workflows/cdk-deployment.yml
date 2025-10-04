@@ -1,0 +1,36 @@
+name: Deploy CDK
+
+env:
+  AWS_REGION: us-east-1
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: CDK Synth
+        uses: scottbrenner/aws-cdk-action@v1.6.0
+        with:
+          args: synth
+
+      - name: CDK Deploy MomentsAppStack
+        uses: scottbrenner/aws-cdk-action@v1.6.0
+        with:
+          args: deploy MomentsAppStack --require-approval never
