@@ -3,6 +3,7 @@ from aws_cdk import (
     aws_ec2 as ec2,
     aws_autoscaling as autoscaling,
     aws_elasticloadbalancingv2 as elbv2,
+    aws_ssm as ssm,
     CfnOutput
 )
 from constructs import Construct
@@ -17,11 +18,13 @@ CIDR_MASK = 24
 class NetworkingStack(Stack):
 
     def __init__(
-        self, scope: Construct, construct_id: str, vpc: ec2.IVpc = None, **kwargs
+        self, scope: Construct, construct_id: str, vpc: ec2.IVpc | None = None, **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         vpc = vpc or self.create_vpc()
+        self.vpc = vpc
+        self.create_vpc_id_ssm_parameter()
         nat_instance = self.create_nat_instance(vpc)
         self.add_route_to_nat(vpc, nat_instance)
         web_instance_auto_scaling = self.create_web_instance(vpc)
@@ -29,6 +32,17 @@ class NetworkingStack(Stack):
 
         CfnOutput(self, "ALB DNS name: ", value=alb.load_balancer_dns_name)
         CfnOutput(self, "URL: ", value="http://" + alb.load_balancer_dns_name)
+        CfnOutput(self, "VpcId", value=vpc.vpc_id)
+
+    def create_vpc_id_ssm_parameter(self) -> ssm.StringParameter:
+        """Persist vpc id in SSM"""
+        return ssm.StringParameter(
+            self,
+            "MomentsVPCID",
+            description="Contains the Moments VPC ID",
+            parameter_name="MomentsVPCID",
+            string_value=self.vpc.vpc_id,
+        )
 
     @staticmethod
     def get_user_data(filename):
@@ -45,7 +59,7 @@ class NetworkingStack(Stack):
             vpc=vpc,
             internet_facing=True,
             vpc_subnets=ec2.SubnetSelection(
-                availability_zones=cfg["AVAILABILITY_ZONES"],
+                availability_zones=["us-east-1a","us-east-1b"],
                 subnet_type=ec2.SubnetType.PUBLIC,
             ),
         )
