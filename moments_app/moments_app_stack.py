@@ -28,13 +28,8 @@ class MomentsAppStack(Stack):
         # --- Add SQS target to the rule ---
         self.create_hello_rule().add_target(targets.SqsQueue(hello_queue))  # type: ignore
 
-        # --- Log group for the Lambda ---
-        log_group = self.create_log_group()
-
         # --- Create Lambda subscribed to SQS ---
-        self.create_scheduled_hello_lambda(
-            log_group=log_group, hello_queue=hello_queue  # type: ignore
-        )
+        self.create_scheduled_hello_lambda(hello_queue=hello_queue)  # type: ignore
 
     # Resource creation
 
@@ -87,19 +82,8 @@ class MomentsAppStack(Stack):
             schedule=events.Schedule.cron(minute="*"),
         )
 
-    def create_log_group(self) -> logs.LogGroup:
-        """Create a log group for Lambda."""
-        return logs.LogGroup(
-            self,
-            "MyFuncLogGroup",
-            retention=logs.RetentionDays.ONE_WEEK,
-            log_group_name="MomentsFuncLogGroup",
-            removal_policy=RemovalPolicy.DESTROY,
-        )
-
     def create_scheduled_hello_lambda(
         self,
-        log_group: logs.ILogGroup,
         hello_queue: sqs.IQueue,
     ) -> lambda_.Function:
         """Create a Lambda function triggered by SQS."""
@@ -112,8 +96,16 @@ class MomentsAppStack(Stack):
             timeout=Duration.seconds(10),
             memory_size=128,
             environment={"LOG_LEVEL": "INFO"},
-            log_group=log_group,
             function_name="HelloLambda",
+        )
+
+        # Ensure the stack owns the Lambda log group so destroy removes it.
+        logs.LogGroup(
+            self,
+            "HelloLambdaLogGroup",
+            log_group_name=f"/aws/lambda/{hello_lambda_fn.function_name}",
+            retention=logs.RetentionDays.ONE_WEEK,
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
         # Attach SQS event source
