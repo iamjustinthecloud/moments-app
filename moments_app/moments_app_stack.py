@@ -9,7 +9,7 @@ from aws_cdk import (
     aws_events_targets as targets,
     aws_lambda as lambda_,
     aws_logs as logs,
-    aws_lambda_event_sources as lambda_event_sources
+    aws_lambda_event_sources as lambda_event_sources,
 )
 from constructs import Construct
 
@@ -70,7 +70,7 @@ class MomentsAppStack(Stack):
             self,
             "HelloDLQ",
             queue_name="HelloDLQ",
-            retention_period=Duration.days(7),
+            retention_period=Duration.days(14),
         )
 
     def create_hello_rule(self):
