@@ -96,17 +96,12 @@ class MomentsAppStack(Stack):
             timeout=Duration.seconds(10),
             memory_size=128,
             environment={"LOG_LEVEL": "INFO"},
+            log_retention=logs.RetentionDays.ONE_WEEK,
             function_name="HelloLambda",
         )
 
-        # Ensure the stack owns the Lambda log group so destroy removes it.
-        logs.LogGroup(
-            self,
-            "HelloLambdaLogGroup",
-            log_group_name=f"/aws/lambda/{hello_lambda_fn.function_name}",
-            retention=logs.RetentionDays.ONE_WEEK,
-            removal_policy=RemovalPolicy.DESTROY,
-        )
+        # Ensure the managed log group is deleted with the stack.
+        hello_lambda_fn.log_group.apply_removal_policy(RemovalPolicy.DESTROY)
 
         # Attach SQS event source
         hello_lambda_fn.add_event_source(
