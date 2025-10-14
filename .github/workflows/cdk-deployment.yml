@@ -2,14 +2,12 @@ name: Deploy CDK
 
 env:
   AWS_REGION: us-east-1
+  MOMENTS_APP_STACK_NAME: MomentsAppStack
 
 on:
-  workflow_dispatch:
-    inputs:
-      stack_name:
-        description: CDK stack to deploy
-        default: MomentsAppStack
-        required: true
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   deploy:
@@ -37,4 +35,4 @@ jobs:
       - name: CDK Deploy Stack
         uses: scottbrenner/aws-cdk-action@v1.6.0
         with:
-          args: deploy ${{ inputs.stack_name }} --require-approval never
+          args: deploy ${{ env.MOMENTS_APP_STACK_NAME }} --require-approval never
