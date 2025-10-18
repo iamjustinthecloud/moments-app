@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.env
+.venv
+venv/
+
+# CDK and build artifacts
+cdk.out/
+build/
+htmlcov/
+*.log
+*.tmp
+
+# IDEs
+.idea/
+.vscode/
+
+# Test & coverage
+.pytest_cache/
+.coverage
+coverage.xml
+
+# OS
+.DS_Store
+
+# Learning
+learning/
+notes/
+.secrets
+.sops.yaml
