@@ -1,0 +1,243 @@
+{
+ "Resources": {
+  "MomentsStaticSiteBucket2ED1010E": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketName": "moments-static-site-bucket"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/MomentsStaticSiteBucket/Resource"
+   }
+  },
+  "GmailIngestorDLQ0DE8D272": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "MessageRetentionPeriod": 1209600,
+    "QueueName": "GmailIngestorDLQ"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/GmailIngestorDLQ/Resource"
+   }
+  },
+  "GmailIngestorQueue6146A711": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "QueueName": "GmailIngestorQueue",
+    "RedrivePolicy": {
+     "deadLetterTargetArn": {
+      "Fn::GetAtt": [
+       "GmailIngestorDLQ0DE8D272",
+       "Arn"
+      ]
+     },
+     "maxReceiveCount": 3
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/GmailIngestorQueue/Resource"
+   }
+  },
+  "GmailIngestorLogGroupA2B9E9BC": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/aws/lambda/GmailIngestor/Lambda",
+    "RetentionInDays": 731
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/GmailIngestorLogGroup/Resource"
+   }
+  },
+  "GmailIngestorLambdaServiceRole0A19F29C": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "DependsOn": [
+    "GmailIngestorLogGroupA2B9E9BC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/GmailIngestorLambda/ServiceRole/Resource"
+   }
+  },
+  "GmailIngestorLambdaServiceRoleDefaultPolicy160A277B": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sqs:ChangeMessageVisibility",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:ReceiveMessage"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "GmailIngestorQueue6146A711",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "GmailIngestorLambdaServiceRoleDefaultPolicy160A277B",
+    "Roles": [
+     {
+      "Ref": "GmailIngestorLambdaServiceRole0A19F29C"
+     }
+    ]
+   },
+   "DependsOn": [
+    "GmailIngestorLogGroupA2B9E9BC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/GmailIngestorLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "GmailIngestorLambda9683AB92": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-038462775396-us-east-1",
+     "S3Key": "3446054ceaa2f3ed90723f0f41e386d6d3c2434241a1797ce50e6ff521c3b371.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "LOG_LEVEL": "INFO"
+     }
+    },
+    "FunctionName": "GmailIngestorLambda",
+    "Handler": "gmail_ingestor.handler",
+    "LoggingConfig": {
+     "LogGroup": {
+      "Ref": "GmailIngestorLogGroupA2B9E9BC"
+     }
+    },
+    "MemorySize": 128,
+    "Role": {
+     "Fn::GetAtt": [
+      "GmailIngestorLambdaServiceRole0A19F29C",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.12",
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "GmailIngestorLambdaServiceRoleDefaultPolicy160A277B",
+    "GmailIngestorLambdaServiceRole0A19F29C",
+    "GmailIngestorLogGroupA2B9E9BC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/GmailIngestorLambda/Resource",
+    "aws:asset:path": "asset.3446054ceaa2f3ed90723f0f41e386d6d3c2434241a1797ce50e6ff521c3b371",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "GmailIngestorLambdaSqsEventSourceMomentsAppStackGmailIngestorQueue1EB9E23A4EE403A5": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 10,
+    "EventSourceArn": {
+     "Fn::GetAtt": [
+      "GmailIngestorQueue6146A711",
+      "Arn"
+     ]
+    },
+    "FunctionName": {
+     "Ref": "GmailIngestorLambda9683AB92"
+    },
+    "FunctionResponseTypes": [
+     "ReportBatchItemFailures"
+    ],
+    "MaximumBatchingWindowInSeconds": 30
+   },
+   "DependsOn": [
+    "GmailIngestorLogGroupA2B9E9BC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/GmailIngestorLambda/SqsEventSource:MomentsAppStackGmailIngestorQueue1EB9E23A/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/41STW8aMRD9LfExMtsGTuUGKKkipRWFSD2sUDTYw+LitRd/kGyt/e+VvWsCjVT1NPa8mTdvPsbF+O5L8fkGXu2I8cNIim0R1g7YgcKrfQl2UoS5Zwd0ZSDb9PgONZIpuSWUGKz1CeRSS8FaMiUcrTO6Jd2GLnaqz6O9mYPFctNRe7RF+OHRYxnIMdorPofKCa2WaITmydvRQDgCf0Ln0KRMMg2khrcVMhQnXGiv3EBw7OGU9hd7rynld1TqyhbhSVdfjfZNGYgcnv/dXM7tqIR6y6EID16xqL0MBNVJGK1qPAvbDeAFfy45fGustWnX4nfGnahR+0zANM/AHhSXaLJMr2LkeVbA+f1l+TJF3ZJNrzurpPcnVG6tvWH4DZpGqKoMxIGpMJfcgmP7C0E1vM2jS6jqp1Bcv777F1oxbwyqNKl+eo02LsU/OqwfQEhv0JKpMx4pQQVbiXwIxnctM6PyyIR0aOzV714x0zZR/3lqzghmF1rtRHWx54/ddVRAXYSVlvHywFpfI5+38ZYaIxQTDcgZYxfH1MfEhBk7l+xivwoq5OkwRGypDFe+NvfQbYaFPOtlLpHPqQwD6hyw/aOSQuEZS+v6J5iajNJo709bzgnPOiIfeD66OV87cBgPxQ6SEnHP2VE7eQFr0dliFk1HV2jTTBMFTc61gyqNd9m6vVafJsXduJjc/LJCjIbbLFa9/QNJZg1nbQQAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "MomentsAppStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}
