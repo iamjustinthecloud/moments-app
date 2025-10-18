@@ -1,3 +1,4 @@
+from math import log
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
@@ -7,6 +8,8 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_logs as logs,
     aws_lambda_event_sources as lambda_event_sources,
+    aws_apigatewayv2 as apigwv2,
+    aws_apigatewayv2_integrations as apigwv2_integrations,
 )
 from constructs import Construct
 
@@ -22,6 +25,7 @@ class MomentsAppStack(Stack):
         # --- Queues ---
         gmail_ingestor_dlq = self.create_gmail_ingestor_dlq()
         gmail_ingestor_queue = self.create_gmail_ingestor_queue(gmail_ingestor_dlq)  # type: ignore
+        # --- API Gateway ---
 
         # --- Create Lambda subscribed to SQS ---
         self.create_gmail_ingestor_lambda(gmail_ingestor_queue=gmail_ingestor_queue)  # type: ignore
@@ -62,12 +66,10 @@ class MomentsAppStack(Stack):
         self,
         gmail_ingestor_queue: sqs.IQueue,
     ) -> lambda_.Function:
-
-        log_group = logs.LogGroup(
+        gmail_ingestor_lambda_log_group = logs.LogGroup(
             self,
             f"{GMAIL_INGESTOR}LogGroup",
-            log_group_name=f"/aws/lambda/{GMAIL_INGESTOR}Lambda",
-            retention=logs.RetentionDays.ONE_YEAR,
+            log_group_name=f"/aws/lambda/{GMAIL_INGESTOR}/Lambda",
             removal_policy=RemovalPolicy.DESTROY,
         )
 
@@ -81,8 +83,10 @@ class MomentsAppStack(Stack):
             memory_size=128,
             environment={"LOG_LEVEL": "INFO"},
             function_name=f"{GMAIL_INGESTOR}Lambda",
+            log_group=gmail_ingestor_lambda_log_group,
         )
-        gmail_ingestor_lambda_fn.node.add_dependency(log_group)
+
+        gmail_ingestor_lambda_fn.node.add_dependency(gmail_ingestor_lambda_log_group)
         gmail_ingestor_lambda_fn.add_event_source(
             lambda_event_sources.SqsEventSource(
                 gmail_ingestor_queue,
