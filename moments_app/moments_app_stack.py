@@ -1,4 +1,3 @@
-from math import log
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
@@ -9,7 +8,6 @@ from aws_cdk import (
     aws_logs as logs,
     aws_lambda_event_sources as lambda_event_sources,
     aws_apigatewayv2 as apigwv2,
-    aws_apigatewayv2_integrations as apigwv2_integrations,
 )
 from constructs import Construct
 
@@ -26,9 +24,9 @@ class MomentsAppStack(Stack):
         gmail_ingestor_dlq = self.create_gmail_ingestor_dlq()
         gmail_ingestor_queue = self.create_gmail_ingestor_queue(gmail_ingestor_dlq)  # type: ignore
         # --- API Gateway ---
-
+        self.create_api_gateway_http_api()
         # --- Create Lambda subscribed to SQS ---
-        self.create_gmail_ingestor_lambda(gmail_ingestor_queue=gmail_ingestor_queue)  # type: ignore
+        self.create_gmail_ingestor_lambda(gmail_ingestor_queue=gmail_ingestor_queue, gmail_ingestor_dlq=gmail_ingestor_dlq)  # type: ignore
 
     # Resource creation
 
@@ -40,6 +38,36 @@ class MomentsAppStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
             bucket_name="moments-static-site-bucket",
         )
+
+    def create_api_gateway_http_api(self):
+        log_group = logs.LogGroup(
+            self,
+            "MomentsApiAccessLogs",
+            log_group_name="/aws/apigateway/moments/dev",
+            removal_policy=RemovalPolicy.DESTROY,
+            retention=logs.RetentionDays.ONE_YEAR,
+        )
+
+        # Using L1 CfnStage for access logs; HttpStage lacks support as of CDK 2.219
+        http_api = apigwv2.CfnApi(
+            self,
+            "MomentsHttpAPI",
+            name="MomentsHttpAPI",
+            protocol_type="HTTP",
+        )
+
+        apigwv2.CfnStage(
+            self,
+            "DevStage",
+            api_id=http_api.ref,
+            stage_name="dev",
+            access_log_settings=apigwv2.CfnStage.AccessLogSettingsProperty(
+                destination_arn=log_group.log_group_arn,
+                format="$context.requestId $context.identity.sourceIp $context.requestTime $context.httpMethod $context.path $context.status $context.protocol $context.responseLength",
+            ),
+        )
+
+        return http_api
 
     def create_gmail_ingestor_queue(self, gmail_ingestor_dlq: sqs.IQueue) -> sqs.Queue:
         """Create the main queue with a DLQ."""
@@ -63,26 +91,28 @@ class MomentsAppStack(Stack):
         )
 
     def create_gmail_ingestor_lambda(
-        self,
-        gmail_ingestor_queue: sqs.IQueue,
+        self, gmail_ingestor_queue: sqs.IQueue, gmail_ingestor_dlq: sqs.IQueue
     ) -> lambda_.Function:
         gmail_ingestor_lambda_log_group = logs.LogGroup(
             self,
             f"{GMAIL_INGESTOR}LogGroup",
-            log_group_name=f"/aws/lambda/{GMAIL_INGESTOR}/Lambda",
+            log_group_name=f"/aws/lambda/{GMAIL_INGESTOR}",
             removal_policy=RemovalPolicy.DESTROY,
         )
 
         gmail_ingestor_lambda_fn = lambda_.Function(
             self,
-            f"{GMAIL_INGESTOR}Lambda",
+            f"{GMAIL_INGESTOR}",
             runtime=lambda_.Runtime.PYTHON_3_12,  # type: ignore
             handler="gmail_ingestor.handler",
             code=lambda_.Code.from_asset("lambdas"),
             timeout=Duration.seconds(10),
             memory_size=128,
-            environment={"LOG_LEVEL": "INFO"},
-            function_name=f"{GMAIL_INGESTOR}Lambda",
+            environment={
+                "LOG_LEVEL": "INFO",
+                "DEAD_LETTER_QUEUE_URL": gmail_ingestor_dlq.queue_url,
+            },
+            function_name=f"{GMAIL_INGESTOR}",
             log_group=gmail_ingestor_lambda_log_group,
         )
 
