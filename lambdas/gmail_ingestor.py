@@ -1,4 +1,3 @@
-
 # Lambda handler POC
 def handler(event, context):
     print("Hello from lambda")
