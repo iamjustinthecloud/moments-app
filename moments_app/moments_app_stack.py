@@ -1,14 +1,28 @@
 from aws_cdk import (
-    Stack,
-    aws_s3 as s3,
-    RemovalPolicy,
     Duration,
-    aws_sqs as sqs,
-    aws_lambda as lambda_,
-    aws_logs as logs,
-    aws_lambda_event_sources as lambda_event_sources,
+    RemovalPolicy,
+    Stack,
+)
+from aws_cdk import (
     aws_apigatewayv2 as apigwv2,
+)
+from aws_cdk import (
     aws_apigatewayv2_integrations as apigwv2_integrations,
+)
+from aws_cdk import (
+    aws_lambda as lambda_,
+)
+from aws_cdk import (
+    aws_lambda_event_sources as lambda_event_sources,
+)
+from aws_cdk import (
+    aws_logs as logs,
+)
+from aws_cdk import (
+    aws_s3 as s3,
+)
+from aws_cdk import (
+    aws_sqs as sqs,
 )
 from constructs import Construct
 
@@ -26,10 +40,10 @@ class MomentsAppStack(Stack):
         self.aws_region = Stack.of(self).region
 
         self.create_s3_static_site_bucket()
-        # --- Queues ---
+        # Queues
         gmail_ingestor_dlq = self.create_gmail_ingestor_dlq()
         gmail_ingestor_queue = self.create_gmail_ingestor_queue(gmail_ingestor_dlq)
-        # --- API Gateway ---
+        # API Gateway
         gmail_ingestor_lambda = self.create_gmail_ingestor_lambda(
             gmail_ingestor_queue=gmail_ingestor_queue,
             gmail_ingestor_dlq=gmail_ingestor_dlq,
@@ -45,7 +59,7 @@ class MomentsAppStack(Stack):
             "MomentsStaticSiteBucket",
             removal_policy=RemovalPolicy.DESTROY,
             bucket_name=f"moments-static-site-bucket-{self.aws_account_id}-{self.aws_region}",
-            auto_delete_objects=True
+            auto_delete_objects=True,
         )
 
     def create_api_gateway_http_api(self, gmail_ingestor_lambda: lambda_.IFunction):
@@ -71,7 +85,6 @@ class MomentsAppStack(Stack):
 
         return http_api
 
-
     def create_gmail_ingestor_queue(self, gmail_ingestor_dlq: sqs.IQueue) -> sqs.Queue:
         """Create the main queue with a DLQ."""
         return sqs.Queue(
@@ -94,7 +107,9 @@ class MomentsAppStack(Stack):
         )
 
     def create_gmail_ingestor_lambda(
-        self, gmail_ingestor_queue: sqs.IQueue, gmail_ingestor_dlq: sqs.IQueue
+        self,
+        gmail_ingestor_queue: sqs.IQueue,
+        gmail_ingestor_dlq: sqs.IQueue,
     ) -> lambda_.Function:
 
         logs.LogGroup(
@@ -102,8 +117,8 @@ class MomentsAppStack(Stack):
             f"{GMAIL_INGESTOR}LogGroup",
             log_group_name=f"/aws/lambda/{GMAIL_INGESTOR}",
             removal_policy=RemovalPolicy.DESTROY,
-            retention=logs.RetentionDays.ONE_YEAR
-            )
+            retention=logs.RetentionDays.ONE_YEAR,
+        )
 
         gmail_ingestor_lambda = lambda_.Function(
             self,
@@ -125,7 +140,7 @@ class MomentsAppStack(Stack):
                 gmail_ingestor_queue,
                 batch_size=10,
                 max_batching_window=Duration.seconds(30),
-                report_batch_item_failures=True
+                report_batch_item_failures=True,
             )
         )
         return gmail_ingestor_lambda
