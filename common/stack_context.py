@@ -1,9 +1,6 @@
 from attrs import define, field
-from aws_cdk import (
-    Stack,
-    RemovalPolicy,
-    aws_logs as logs
-    )
+from aws_cdk import RemovalPolicy, Stack, aws_logs as logs
+
 import common.constants as constants
 
 
@@ -32,15 +29,18 @@ class StackContext:
         power_tools_type = constants.LAMBDA_LAYER_NAME
         architecture = constants.ARCHITECTURE_X86_64
         if not region:
-            raise ValueError("AWS region is not set, unable to resolve Power Tools Layer ARN")
+            raise ValueError(
+                "AWS region is not set, unable to resolve Power Tools Layer ARN"
+            )
         return constants.POWER_TOOLS_LAYER.format(
             region=region,
             runtime=runtime,
             version=version,
             lambda_layer_account=lambda_layer_account,
             power_tools_type=power_tools_type,
-            architecture=architecture
+            architecture=architecture,
         )
+
     # ---------- naming ----------
     def build_resource_name(self, resource_type: str) -> str:
         return (
@@ -53,8 +53,8 @@ class StackContext:
             f"{self.domain.capitalize()}"
             f"{self.role.capitalize()}"
             f"{resource_type.title()}"
-
         )
+
     # TODO: Move to a log group resource helper module
     def build_log_group(self, function_name: str) -> logs.LogGroup:
         return logs.LogGroup(
