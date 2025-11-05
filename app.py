@@ -14,7 +14,6 @@ from aws_cdk import Environment
 from moments_app.moments_app_stack import MomentsAppStack
 from networking.networking_stack import NetworkingStack
 
-
 app = cdk.App()
 
 env = Environment(
@@ -22,14 +21,10 @@ env = Environment(
     region=os.getenv("CDK_DEFAULT_REGION"),
 )
 
-# Share the same AWS account and region across all stacks dispatched from this app.
 MomentsAppStack(
     app,
     "MomentsAppStack",
     env=env,
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
 )
 # Provision networking resources (VPC, subnets, gateways, etc.) alongside the app stack.
 NetworkingStack(app, "NetworkingStack", env=env)
