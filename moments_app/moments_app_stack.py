@@ -1,5 +1,5 @@
 from typing import cast
-import common.constants as constants
+
 from aws_cdk import (
     Duration,
     RemovalPolicy,
@@ -14,6 +14,8 @@ from aws_cdk import (
 )
 from aws_cdk.aws_lambda_python_alpha import PythonLayerVersion
 from constructs import Construct
+
+import common.constants as constants
 from common.stack_context import StackContext
 
 
