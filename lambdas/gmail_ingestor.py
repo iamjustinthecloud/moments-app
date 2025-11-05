@@ -11,6 +11,7 @@ from aws_lambda_powertools.tracing import Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 
+
 logger: Logger = Logger(
     service="gmail-ingestor", level=os.getenv("LOG_LEVEL", "INFO").upper()
 )

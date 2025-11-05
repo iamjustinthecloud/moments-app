@@ -3,6 +3,7 @@ name: Deploy CDK
 env:
   AWS_REGION: us-east-1
   MOMENTS_APP_STACK_NAME: MomentsAppStack
+  POETRY_VERSION: 1.8.3
 
 on:
   push:
@@ -26,6 +27,10 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Install Poetry
+        run: pip install poetry==${{ env.POETRY_VERSION }}
+      - name: Install Python deps (includes aws-cdk-aws-lambda-python-alpha)
+        run: poetry install --no-interaction --no-root
 
       - name: CDK Synth
         uses: scottbrenner/aws-cdk-action@v1.6.0
