@@ -4,7 +4,7 @@ from aws_cdk import (
     aws_autoscaling as autoscaling,
     aws_elasticloadbalancingv2 as elbv2,
     aws_ssm as ssm,
-    CfnOutput
+    CfnOutput,
 )
 from constructs import Construct
 from typing import Union
@@ -59,12 +59,14 @@ class NetworkingStack(Stack):
             vpc=vpc,
             internet_facing=True,
             vpc_subnets=ec2.SubnetSelection(
-                availability_zones=["us-east-1a","us-east-1b"],
+                availability_zones=["us-east-1a", "us-east-1b"],
                 subnet_type=ec2.SubnetType.PUBLIC,
             ),
         )
         http_listener = alb.add_listener("HTTPListener", port=80)
-        tg = http_listener.add_targets("MomentsAppFleet", port=8080, targets=[web_instance_auto_scaling])
+        tg = http_listener.add_targets(
+            "MomentsAppFleet", port=8080, targets=[web_instance_auto_scaling]
+        )
         tg.configure_health_check(healthy_http_codes="200,301")
         web_instance_auto_scaling.connections.allow_from(
             alb, ec2.Port.tcp(8080), "ALB access on target instance"
@@ -172,7 +174,7 @@ class NetworkingStack(Stack):
             machine_image=amazon_linux,
             user_data=ec2.UserData.custom(user_data),
             vpc_subnets=ec2.SubnetSelection(
-                availability_zones=["us-east-1a","us-east-1b"],
+                availability_zones=["us-east-1a", "us-east-1b"],
                 subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
             ),
             instance_type=ec2.InstanceType.of(
