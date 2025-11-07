@@ -1,8 +1,6 @@
 permissions:
   contents: read
   pull-requests: write
-env:
-  POETRY_VERSION: 2.1.4
 
 name: Build
 on:
@@ -20,27 +18,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Cache Poetry packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pypoetry
-          key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            poetry-${{ runner.os }}-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: 3.12.3
       - name: Install Poetry
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry==${{ env.POETRY_VERSION }}
-      - name: Run Pytest
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.1.4
+
+      - name: Install dependencies
         run: |
           poetry install --no-interaction --no-ansi --with dev
-          poetry run pytest \
-          --cov=moments_app \
-          --cov-report=xml:coverage.xml
+      - name: Run tests via Makefile
+        run: |
+          make test stack=.
       - name: SonarQubeCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:

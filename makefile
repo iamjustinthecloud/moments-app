@@ -7,13 +7,13 @@ test:
   		echo "❌ ERROR: Please specify a stack name, e.g. make test stack=moments_app"; \
   		exit 1; \
   	fi
-	@echo "🧹 Running black"
-	black .
+	@echo "🧹 Running black --check"
+	poetry run black --check $(stack)
 	@echo "🧪 Running pytest with coverage for stack: $(stack)"
 	poetry run pytest \
 		--cov=$(stack) \
 		--cov-report=term-missing \
-		--cov-report=html:build/coverage-html \
+		--cov-report=xml \
 		tests/
 
 # Open coverage report (macOS: 'open', Linux: 'xdg-open')
