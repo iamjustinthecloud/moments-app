@@ -2,6 +2,7 @@ permissions:
   contents: read
   pull-requests: write
 
+
 name: Build
 on:
   push:
@@ -11,28 +12,43 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
+
   sonarqubecloud:
     name: SonarQubeCloud
     runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: ""
+      POETRY_VERSION: ""
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Read versions
+        run: |
+          echo "PYTHON_VERSION=$(awk '/^python /{print $2}' .tool-versions)" >> $GITHUB_ENV
+          echo "POETRY_VERSION=$(awk '/^poetry /{print $2}' .tool-versions)" >> $GITHUB_ENV
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12.3
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: poetry
+          cache-dependency-path: poetry.lock
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 2.1.4
+          version: ${{ env.POETRY_VERSION }}
+
+      - name: Verify Poetry
+        run: poetry --version
 
       - name: Install dependencies
         run: |
           poetry install --no-interaction --no-ansi --with dev
       - name: Run tests via Makefile
         run: |
-          make test stack=.
+          make test stack=moments_app
       - name: SonarQubeCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:

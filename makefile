@@ -10,7 +10,7 @@ test:
 	@echo "🧹 Running black --check"
 	poetry run black --check $(stack)
 	@echo "🧪 Running pytest with coverage for stack: $(stack)"
-	poetry run pytest \
+	PYTHONPATH=. poetry run pytest \
 		--cov=$(stack) \
 		--cov-report=term-missing \
 		--cov-report=xml \
