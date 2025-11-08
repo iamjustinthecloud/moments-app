@@ -1,4 +1,5 @@
 from typing import cast
+import os
 
 from aws_cdk import (
     Duration,
@@ -32,7 +33,29 @@ class MomentsAppStack(Stack):
         # DynamoDB Table
         self.moments_table = self._build_dynamodb()
 
-        self.common_layer = self._build_common_layer()
+        if os.getenv("SKIP_BUNDLING") == "1":
+            self.code = _lambda.Code.from_inline(
+                "def handler(event, context): return 'ok'"
+            )
+            self.layers = [
+                _lambda.LayerVersion.from_layer_version_arn(
+                    self,
+                    self.context.build_resource_id("LambdaPowerToolsLayer"),
+                    layer_version_arn=self.context.build_power_tools_layer_arn(),
+                ),
+            ]
+        else:
+            # Only build the Python layer (which bundles) when not skipping bundling
+            self.common_layer = self._build_common_layer()
+            self.code = _lambda.Code.from_asset("lambdas")
+            self.layers = [
+                self.common_layer,
+                _lambda.LayerVersion.from_layer_version_arn(
+                    self,
+                    self.context.build_resource_id("LambdaPowerToolsLayer"),
+                    layer_version_arn=self.context.build_power_tools_layer_arn(),
+                ),
+            ]
 
         # Lambda function
         self.gmail_ingestor_lambda = self._build_gmail_ingestor_lambda(
@@ -145,25 +168,17 @@ class MomentsAppStack(Stack):
         """Define Gmail ingestor Lambda function and connect it to SQS."""
 
         self.context.build_log_group("Function")
-
         gmail_ingestor_lambda = _lambda.Function(
             self,
             self.context.build_resource_id("Function"),
             function_name=self.context.build_resource_name("Function"),
             runtime=constants.PYTHON_RUNTIME,
             handler="gmail_ingestor.handler",
-            code=_lambda.Code.from_asset("lambdas"),
+            code=self.code,
             timeout=Duration.seconds(10),
             memory_size=128,
             tracing=_lambda.Tracing.ACTIVE,
-            layers=[
-                self.common_layer,
-                _lambda.LayerVersion.from_layer_version_arn(
-                    self,
-                    self.context.build_resource_id("LambdaPowerToolsLayer"),
-                    layer_version_arn=self.context.build_power_tools_layer_arn(),
-                ),
-            ],
+            layers=self.layers,
             environment={
                 "LOG_LEVEL": "INFO",
                 "DEAD_LETTER_QUEUE_URL": gmail_ingestor_dlq.queue_url,

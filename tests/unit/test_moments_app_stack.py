@@ -11,6 +11,7 @@ def template():
     template = Template.from_stack(stack)
     return template
 
+
 # Basic test for now
 def test_stack_synthesizes(template):
     # Asserts the template exists by accessing it
