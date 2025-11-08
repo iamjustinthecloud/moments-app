@@ -17,8 +17,8 @@ jobs:
     name: SonarQubeCloud
     runs-on: ubuntu-latest
     env:
-      PYTHON_VERSION: ""
-      POETRY_VERSION: ""
+      PYTHON_VERSION: 3.12.3
+      POETRY_VERSION: 2.1.4
 
     steps:
       - uses: actions/checkout@v4
@@ -33,12 +33,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: poetry
-          cache-dependency-path: poetry.lock
+
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: ${{ env.POETRY_VERSION }}
+          version: 2.1.4
 
       - name: Verify Poetry
         run: poetry --version
@@ -49,8 +48,13 @@ jobs:
       - name: Run tests via Makefile
         run: |
           make test stack=moments_app
+      - name: Verify coverage file
+        run: |
+          ls -l coverage.xml || (echo "coverage.xml missing" && exit 1)
+          head -n 20 coverage.xml || true
       - name: SonarQubeCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN }}
+
