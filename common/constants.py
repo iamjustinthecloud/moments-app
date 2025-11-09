@@ -10,9 +10,17 @@ POWER_TOOLS_LAYER = "arn:aws:lambda:{region}:{lambda_layer_account}:layer:{power
 PYTHON_RUNTIME = _lambda.Runtime.PYTHON_3_12
 DEFAULT_ARCHITECTURE = _lambda.Architecture.X86_64
 COMMON_LAYER_SRC = "layers/common"
-DEFAULT_REGION = "us-east-1"
+
 DEFAULT_ENV = "dev"
 GMAIL_SECRET_NAME = "moments_gmail_ingestor_oauth_client_id"
 SERVICE_NAME = "moments"
 DOMAIN_NAME = "gmail"
 ROLE = "ingestor"
+
+
+VPC_NAME = "moments-vpc"
+VPC_CIDR = "10.0.0.0/16"
+SUBNET_NAME = "moments-subnet"
+CIDR_MASK = 24
+ANY_IPV4_CIDR = "0.0.0.0/0"
+DEFAULT_REGION = "us-east-1"
