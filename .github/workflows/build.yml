@@ -1,7 +1,10 @@
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: write # required for SonarQubeCloud PR decoration
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 name: Build
 on:
@@ -16,12 +19,13 @@ jobs:
   sonarqubecloud:
     name: SonarQubeCloud
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       PYTHON_VERSION: 3.12.3
       POETRY_VERSION: 2.1.4
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - name: Read versions
@@ -30,12 +34,12 @@ jobs:
           echo "POETRY_VERSION=$(awk '/^poetry /{print $2}' .tool-versions)" >> $GITHUB_ENV
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
+        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1.4.1
         with:
           version: 2.1.4
 
@@ -53,7 +57,7 @@ jobs:
           ls -l coverage.xml || (echo "coverage.xml missing" && exit 1)
           head -n 20 coverage.xml || true
       - name: SonarQubeCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
+        uses: SonarSource/sonarcloud-github-action@ffc3010689be73b8e5ae0c57ce35968afd7909e8 #v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN }}
