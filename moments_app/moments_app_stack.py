@@ -27,6 +27,8 @@ class MomentsAppStack(Stack):
         self.context = StackContext(scope=self)
         self.aws_region = self.context.aws_region
 
+        # S3 Bucket
+        self.static_site_bucket = self._build_s3_static_site_bucket()
         # Queues
         gmail_ingestor_dlq = self._build_gmail_ingestor_dlq()
         self.gmail_queue = self._build_gmail_ingestor_queue(gmail_ingestor_dlq)
@@ -70,7 +72,7 @@ class MomentsAppStack(Stack):
     # Resource creation
 
     def _build_dynamodb(self):
-        moments_table = dynamodb.TableV2(
+        moments_table = dynamodb.Table(
             self,
             id=self.context.build_resource_id("Table"),
             table_name=self.context.build_resource_name("Table"),
@@ -83,7 +85,7 @@ class MomentsAppStack(Stack):
                 type=dynamodb.AttributeType.STRING,
             ),
             removal_policy=RemovalPolicy.DESTROY,
-            billing=dynamodb.Billing.on_demand(),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
         moments_table.add_global_secondary_index(
             index_name="StatusIndex",
@@ -102,6 +104,8 @@ class MomentsAppStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
             bucket_name=self.context.build_resource_name("WebAssets"),
             auto_delete_objects=True,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            encryption=s3.BucketEncryption.S3_MANAGED,
         )
 
     def _build_api_gateway_http_api(self, gmail_ingestor_lambda: _lambda.Function):
@@ -163,7 +167,7 @@ class MomentsAppStack(Stack):
         self,
         gmail_queue: sqs.IQueue,
         gmail_ingestor_dlq: sqs.IQueue,
-        moments_table: dynamodb.ITableV2,
+        moments_table: dynamodb.ITable,
     ) -> _lambda.Function:
         """Define Gmail ingestor Lambda function and connect it to SQS."""
 

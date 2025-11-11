@@ -10,10 +10,9 @@ test:
 	@echo "🧹 Running black --check"
 	poetry run black --check $(stack)
 	@echo "🧪 Running pytest with coverage for stack: $(stack)"
-	SKIP_BUNDLING=1 CDK_DISABLE_ASSET_STAGING=1 PYTHONPATH=. \
-		poetry run coverage run --source=$(stack) -m pytest tests/ \
-		&& poetry run coverage xml -o coverage.xml \
-		&& poetry run coverage report -m
+	poetry run coverage run --source=$(stack) -m pytest tests/ \
+	&& poetry run coverage xml -o coverage.xml \
+	&& poetry run coverage report -m
 
 # Open coverage report (macOS: 'open', Linux: 'xdg-open')
 coverage:
