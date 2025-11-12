@@ -33,3 +33,14 @@ notes/
 .sops.yaml
 scratch.py
 sonar-local.properties
+
+
+.VSCodeCounter/
+.aws-sam/
+.markdownlint.json
+IMPLEMENTATION_PLAN.md
+PHASE1_TASKS.md
+docs/
+moments_app/REFACTOR_PLAN.md
+layers/common/python/
+gitignore
