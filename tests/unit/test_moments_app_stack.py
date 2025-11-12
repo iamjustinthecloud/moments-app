@@ -1,4 +1,3 @@
-import os
 from typing import Mapping, Any, Optional
 import pytest
 from aws_cdk.assertions import Template, Match
@@ -173,6 +172,7 @@ def test_lambda_uses_asset_code(template: Template):
         ),
     )
 
+
 @pytest.mark.parametrize("skip", ["1", None])
 def test_gmail_layers_and_code_paths(monkeypatch, skip):
     if skip is None:
@@ -185,26 +185,88 @@ def test_gmail_layers_and_code_paths(monkeypatch, skip):
     if skip == "1":
         template.has_resource_properties(
             "AWS::Lambda::Function",
-            Match.object_like({
-                "Handler": "gmail_ingestor.handler",
-                "Code": {"ZipFile": Match.any_value()},
-            }),
+            Match.object_like(
+                {
+                    "Handler": "gmail_ingestor.handler",
+                    "Code": {"ZipFile": Match.any_value()},
+                }
+            ),
         )
     else:
         template.has_resource_properties(
             "AWS::Lambda::Function",
-            Match.object_like({
-                "Handler": "gmail_ingestor.handler",
-                "Code": {"S3Bucket": Match.any_value(), "S3Key": Match.any_value()},
-            }),
+            Match.object_like(
+                {
+                    "Handler": "gmail_ingestor.handler",
+                    "Code": {"S3Bucket": Match.any_value(), "S3Key": Match.any_value()},
+                }
+            ),
         )
         layer_resources = template.find_resources("AWS::Lambda::LayerVersion")
         assert len(layer_resources) >= 1
         common_layer_id = next(iter(layer_resources))
         template.has_resource_properties(
             "AWS::Lambda::Function",
-            Match.object_like({
-                "FunctionName": "moments-gmail-ingestor-function-dev",
-                "Layers": Match.array_with([Match.object_like({"Ref": common_layer_id})]),
-            }),
+            Match.object_like(
+                {
+                    "FunctionName": "moments-gmail-ingestor-function-dev",
+                    "Layers": Match.array_with(
+                        [Match.object_like({"Ref": common_layer_id})]
+                    ),
+                }
+            ),
         )
+
+
+# -------------------- SQS tests ----------------------------
+
+
+def test_sqs_dlq_properties(
+    template: Template,
+    json_template: Mapping[str, Any],
+):
+    template.has_resource_properties(
+        "AWS::SQS::Queue",
+        {
+            "QueueName": Match.string_like_regexp(r".*gmail-ingestor-dlq.*"),
+            "MessageRetentionPeriod": 1209600,
+        },
+    )
+    # No further selection/counting; presence asserted above.
+
+
+def test_sqs_queue_properties(
+    template: Template,
+    json_template: Mapping[str, Any],
+):
+    template.has_resource_properties(
+        "AWS::SQS::Queue",
+        {
+            "QueueName": Match.string_like_regexp(r".*gmail-ingestor-queue.*"),
+            "RedrivePolicy": {
+                "deadLetterTargetArn": Match.any_value(),
+                "maxReceiveCount": 3,
+            },
+        },
+    )
+    # No further selection/counting; presence asserted above.
+
+
+# -------------------- Log Group tests ----------------------------
+def test_log_group_properties(
+    template: Template,
+    json_template: Mapping[str, Any],
+):
+    template.has_resource_properties(
+        "AWS::Logs::LogGroup",
+        {
+            "LogGroupName": Match.string_like_regexp(
+                r".*/aws/lambda/moments-gmail-ingestor-function.*"
+            ),
+            "RetentionInDays": 365,
+        },
+    )
+    log_group = find_resources_by_type(template, "AWS::Logs::LogGroup")
+    logical_id = get_single_resource_id(log_group, "AWS::Logs::LogGroup")
+    assert json_template["Resources"][logical_id]["UpdateReplacePolicy"] == "Delete"
+    assert json_template["Resources"][logical_id]["DeletionPolicy"] == "Delete"

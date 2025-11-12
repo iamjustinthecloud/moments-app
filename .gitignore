@@ -31,3 +31,5 @@ learning/
 notes/
 .secrets
 .sops.yaml
+scratch.py
+sonar-local.properties
