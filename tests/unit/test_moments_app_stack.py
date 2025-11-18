@@ -8,7 +8,8 @@ from stack_test_helpers import (
     get_single_resource_id,
     template,
     expected_lambda_props,
-    json_template)
+    json_template,
+)
 from governance_checks import assert_s3_compliance
 from tests.unit.stack_test_helpers import UpdateDeletePolicyTestCase
 
@@ -152,7 +153,6 @@ def test_bucket_enforces_strict_access(template: Template):
     assert_s3_compliance(template)
 
 
-
 # -------------------- Lambda Function Retriever tests ----------------------------
 
 
@@ -161,7 +161,7 @@ LAMBDA_TEST_CASES = (
         id="gmail_retriever_function",
         handler="gmail_retriever.handler",
         function_name=r".*moments-gmail-ingestion-retriever-function.*",
-        memory_size=512,
+        memory_size=256,
         timeout=30,
         extra_env={"LOG_LEVEL": "INFO"},
     ),

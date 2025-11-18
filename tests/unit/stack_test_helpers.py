@@ -6,9 +6,6 @@ from aws_cdk import App
 import pytest
 
 
-
-
-
 # ------------------- Test Case Data Classes -------------------
 @dataclass(frozen=True)
 class LambdaTestCase:

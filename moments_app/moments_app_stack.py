@@ -74,7 +74,6 @@ class MomentsAppStack(Stack):
         # Permissions
         # retriever Lambda permissions
         self.gmail_queue.grant_send_messages(self.gmail_retriever_lambda)
-        self.moments_table.grant_read_write_data(self.gmail_retriever_lambda)
 
         # Processor Lambda permissions
         self.gmail_queue.grant_consume_messages(self.gmail_processor_lambda)
@@ -232,7 +231,7 @@ class MomentsAppStack(Stack):
             code=self.code,
             timeout=Duration.seconds(30),
             architecture=constants.DEFAULT_ARCHITECTURE,
-            memory_size=512,
+            memory_size=256,
             tracing=_lambda.Tracing.ACTIVE,
             log_group=log_group,
             layers=self.layers,
@@ -241,6 +240,7 @@ class MomentsAppStack(Stack):
                 "LOG_LEVEL": "INFO",
                 "GMAIL_QUEUE_URL": queue.queue_url,
                 "SECRET_NAME": constants.GMAIL_RETRIEVER_SECRET_NAME,
+                "POWERTOOLS_IDEMPOTENCY_TABLE_NAME": "place_holder_table_name",
             },
         )
         return gmail_retriever_lambda
