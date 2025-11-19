@@ -15,7 +15,8 @@ attrs = ">=25.3.0,<26.0.0"
 google-api-python-client = "^2.185.0"
 google-auth-httplib2 = "^0.2.0"
 google-auth-oauthlib = "^1.2.2"
-aws-lambda-powertools = {extras = ["all"], version = "^3.22.0"}
+aws-lambda-powertools = "^3.23.0"
+cdk-nag = "^2.37.55"
 
 
 [tool.pyright]
